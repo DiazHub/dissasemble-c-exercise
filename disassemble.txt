@@ -1,0 +1,94 @@
+Disassemble f.o into human readable C.
+
+Initial thoughts: 
+	C -> compile -> f.o 
+NOW: 
+	f.o -> 'uncompile' (learned later it was called 'decompiling') -> f.c
+	
+	f.o -> machine lang -> c code 
+	= 	1) f.o -> machine lang
+		2) machine lang -> c code
+
+Begin:
+	what's in this thing? 
+		* Hexadecimal values
+
+	What do the values mean? 
+		* $ hd f.o
+			-> ELF + junk + .symtab.strtab.shstrtab.rel.text.data.bss.comment.ARM.attribute + more junk
+
+	Google: .symtab.strtab.shstrtab.rel.text.data.bss.comment.ARM.attribute
+		-> Executable and Linkable Format (ELF)
+		What is it?
+			* Standard file format for executables, object code, etc.
+			* Layout : Program header table, section header table, and data (our target)
+			* There's 3 Types of object files : executable, relocatable, and shared object files
+				-> I read that since there's '.symtab.strtab.shstrtab' in my f.o file, then this is likely a Relocatable object file
+		after reading some more, turns out that the .text section holds the executable instructions of the program, the .data section holds the initialized data, .strtab holds strings, the .symtab holds the symbol table which can be parsed and that there's a builtin readelf program that is used to retrieve information about the file
+
+edwin@Klinux-VirtualBox:~/appmed/exercises-disassemble-C-master$ readelf -h f.o
+ELF Header:
+  Magic:   7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00 
+  Class:                             ELF32
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              REL (Relocatable file)
+  Machine:                           ARM
+  Version:                           0x1
+  Entry point address:               0x0
+  Start of program headers:          0 (bytes into file)
+  Start of section headers:          448 (bytes into file)
+  Flags:                             0x5000000, Version5 EABI
+  Size of this header:               52 (bytes)
+  Size of program headers:           0 (bytes)
+  Number of program headers:         0
+  Size of section headers:           40 (bytes)
+  Number of section headers:         10
+  Section header string table index: 7
+edwin@Klinux-VirtualBox:~/appmed/exercises-disassemble-C-master$ readelf -S f.o
+There are 10 section headers, starting at offset 0x1c0:
+
+Section Headers:
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+  [ 1] .text             PROGBITS        00000000 000034 000028 00  AX  0   0  4
+  [ 2] .rel.text         REL             00000000 000164 000010 08   I  8   1  4
+  [ 3] .data             PROGBITS        00000000 00005c 000000 00  WA  0   0  1
+  [ 4] .bss              NOBITS          00000000 00005c 000000 00  WA  0   0  1
+  [ 5] .comment          PROGBITS        00000000 00005c 000039 01  MS  0   0  1
+  [ 6] .ARM.attributes   ARM_ATTRIBUTES  00000000 000095 000030 00      0   0  1
+  [ 7] .shstrtab         STRTAB          00000000 000174 000049 00      0   0  1
+  [ 8] .symtab           SYMTAB          00000000 0000c8 000090 10      9   8  4
+  [ 9] .strtab           STRTAB          00000000 000158 00000a 00      0   0  1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings)
+  I (info), L (link order), G (group), T (TLS), E (exclude), x (unknown)
+  O (extra OS processing required) o (OS specific), p (processor specific)
+
+  * Relocatable file is confirmed
+  * ARM instruction set
+  * Section headers start 448 bytes into file
+
+ A lot of my time was spent learning about what an elf file is and how to interpret it, what follows is what my logic would look like had I finished the task
+
+ Read in file, 
+ 	jump to:
+ 	.text offset, reconstruct instructions -> write out to another file
+ 	.data is size 0
+ 	.bss that holds uninitialized data is size 0
+ 	.rel.text holds relocation information, jump to the section and decypher info to connect references with definitions
+
+Read in instruction file
+	Learn how ARM instructions are turned into C code
+
+
+
+
+Sources: 
+	http://www.skyfree.org/linux/references/ELF_Format.pdf 
+	http://www.cirosantilli.com/elf-hello-world/
+	http://infocenter.arm.com/help/topic/com.arm.doc.dui0101a/DUI0101A_Elf.pdf
+	https://en.wikipedia.org/wiki/ARM_architecture
+	https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
